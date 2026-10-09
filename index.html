@@ -5,6 +5,7 @@
 </head><body>
 <header id="hd"><span class="logo" data-tab="feed">💡 <span id="app"></span></span></header>
 <main id="main"></main>
+<script>window.onerror=function(m,s,l){document.getElementById('main').innerHTML='<pre style="padding:16px;white-space:pre-wrap">Error: '+m+' ('+String(s||'').split('/').pop()+' line '+l+')</pre>'};window.onunhandledrejection=function(e){document.getElementById('main').innerHTML='<pre style="padding:16px;white-space:pre-wrap">Error: '+(e.reason&&e.reason.message||e.reason)+'</pre>'};</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="app1.js"></script>
 <script src="app2.js"></script>
