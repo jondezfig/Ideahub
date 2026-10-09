@@ -62,3 +62,5 @@ async function locate(){
 function goLive(key,name){const ch=sb.channel('online',{config:{presence:{key}}});
   ch.on('presence',{event:'sync'},()=>{online=ch.presenceState();const n=Object.keys(online).length;['#lc','#lcl'].forEach(i=>$(i)&&($(i).textContent=n));if(tab==='live'&&me)paintLive()})
    .subscribe(async s=>{if(s==='SUBSCRIBED'){const g=await locate();await ch.track({name,place:g.place,lat:g.lat,lng:g.lng})}});chans.push(ch)}
+
+started=null;
