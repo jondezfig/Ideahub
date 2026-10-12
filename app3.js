@@ -64,4 +64,3 @@ async function act(a,id){const v=i=>(($('#'+i)||{}).value||'').trim();let r;
   if(a==='share'){const t='Join me on '+APP+': '+LINK();try{if(navigator.share)await navigator.share({text:t});else{await navigator.clipboard.writeText(t);toast('Link copied')}}catch(e){}}
   }catch(err){toast(err.message||'Something went wrong')}
 }
-boot();
