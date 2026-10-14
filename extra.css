@@ -16,3 +16,12 @@ body.app main.pg{max-width:720px;margin:0 auto;padding:16px 16px 120px}
 .stack{display:flex}.stack .av{margin-right:-10px;border:2px solid var(--bg);width:34px;height:34px}
 .rank{display:flex;justify-content:space-between;align-items:flex-end}
 .maplibregl-ctrl-top-right{top:60px}
+.pm{text-align:center}
+.pm .pbig{width:112px;margin:10px auto 0}
+.pm .pbig .av{width:112px;height:112px;font-size:46px}
+.pm h1.big{font-size:30px!important;margin:16px 0 4px!important}
+.pm>.mu{font-size:17px!important}
+.pm .hl{font-size:17px;margin-top:8px}
+.pm .otw{display:inline-block;margin-top:10px;color:#16a34a;font-weight:700}
+.pm .psr{margin:14px 0 10px}
+.pm .pbio2{font-size:16px;margin-top:10px;color:var(--tx)}
