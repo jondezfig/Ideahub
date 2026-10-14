@@ -23,7 +23,8 @@ st.textContent=`
 .phead{display:flex;align-items:center;gap:14px;padding:12px 18px;cursor:pointer}
 .phead .av,.pcard .av{width:44px;height:44px;font-size:18px}
 .phead .sp{min-width:0}
-.phead b{font-size:17px;display:block}.phead .mu{font-size:14px}
+.phead b{font-size:17px;display:block}.phead .sp{cursor:pointer}.pav{display:grid;flex:none;cursor:pointer}
+.igl{display:inline-flex;align-items:center;gap:5px;color:var(--mu);font-size:14px;text-decoration:underline;text-underline-offset:3px}.phead .mu{font-size:14px}
 .chev{color:var(--mu);transition:transform .2s;flex:none;display:grid}
 .prow.open .chev{transform:rotate(180deg)}
 .pbody{padding:0 18px 16px}
@@ -77,14 +78,24 @@ async function flushNote(id){
 }
 
 /* ---------- list ---------- */
+const LK='<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+function handleLink(p){
+  const lbl='@'+esc(p.username||''),ext='target="_blank" rel="noopener noreferrer"';
+  if(p.instagram)return `<a class="igl" href="https://instagram.com/${encodeURIComponent(p.instagram)}" ${ext}>${SI.instagram.replace('width="20" height="20"','width="14" height="14"')}${lbl}</a>`;
+  if(p.x_handle)return `<a class="igl" href="https://x.com/${encodeURIComponent(p.x_handle)}" ${ext}>${LK}${lbl}</a>`;
+  if(p.youtube)return `<a class="igl" href="https://youtube.com/@${encodeURIComponent(p.youtube)}" ${ext}>${LK}${lbl}</a>`;
+  const w=(p.links||[]).find(u=>/^https?:\/\//i.test(u));
+  if(w)return `<a class="igl" href="${esc(w)}" ${ext}>${LK}${lbl}</a>`;
+  return `<a class="igl" href="#" data-pp="profile" data-id="${p.id}">${lbl}</a>`;
+}
 function row(p){
   const id=p.id,s=stat(id),f=rel(id),open=openId===id;
   const sub=[rolesOf(p).slice(0,2).join(', '),p.city,f&&f.created_at?fmt(f.created_at):''].filter(Boolean).join(' \u00b7 ');
   const side=s==='incoming'?`<button class="btn" data-act="acc" data-id="${id}">Accept</button>`:s==='none'?`<button class="btn" data-act="add" data-id="${id}">Add</button>`:s==='sent'?'<span class="mu">Sent</span>':'';
   const rm=s==='friend'?'Remove':s==='incoming'?'Decline':s==='sent'?'Cancel request':'';
-  return `<div class="prow${open?' open':''}"><div class="phead" data-pp="toggle" data-id="${id}">${avatar(p)}<div class="sp"><b>${esc(name(p))}</b><div class="mu">${esc(sub||nm(p))}</div></div>${side}<span class="chev">${I.chev}</span></div>
+  return `<div class="prow${open?' open':''}"><div class="phead" data-pp="toggle" data-id="${id}"><span class="pav" data-pp="profile" data-id="${id}">${avatar(p)}</span><div class="sp" data-pp="profile" data-id="${id}"><b>${esc(name(p))}</b><div class="mu">${esc(sub||nm(p))}</div></div>${side}<span class="chev">${I.chev}</span></div>
   ${open?`<div class="pbody"><textarea class="pnote" data-id="${id}" maxlength="1000" placeholder="Note, only you see this">${esc(notes[id]||'')}</textarea>
-  <div class="pfoot"><a href="#" data-pp="profile" data-id="${id}">Profile &rarr;</a><span class="mu">@${esc(p.username||'')}</span><span class="sp"></span>${s==='friend'?`<button class="btn g" data-act="dm" data-id="${id}">Message</button>`:''}${rm?`<button class="lnk" data-pp="remove" data-id="${id}">${rm}</button>`:''}</div></div>`:''}</div>`;
+  <div class="pfoot"><a href="#" data-pp="profile" data-id="${id}">Profile &rarr;</a>${handleLink(p)}<span class="sp"></span>${s==='friend'?`<button class="btn g" data-act="dm" data-id="${id}">Message</button>`:''}${rm?`<button class="lnk" data-pp="remove" data-id="${id}">${rm}</button>`:''}</div></div>`:''}</div>`;
 }
 
 window.vPeople=function vPeople(){
@@ -149,8 +160,7 @@ function renderPerson(){
 }
 function openPerson(id){viewing=id;renderPerson();scrollTo(0,0);bump(id)}
 async function bump(id){
-  if(id===me.id||seen.has(id))return;seen.add(id);
-  try{if(sessionStorage.getItem('pv_'+id))return;sessionStorage.setItem('pv_'+id,'1')}catch(e){}
+  if(id===me.id)return;
   const r=await sb.rpc('bump_profile_view',{pid:id});if(r.error)console.error(r.error);
 }
 
@@ -188,13 +198,22 @@ document.addEventListener('focusout',e=>{
 
 /* ---------- profile views on the Me page ---------- */
 const baseMe=window.vMe;
-window.vMe=function vMe(){baseMe();showViews()};
-async function showViews(){
-  if(!document.querySelector('.pm'))return;
+window.vMe=function vMe(){baseMe();refreshViews()};
+async function refreshViews(){
+  if(!document.querySelector('.pm')||!me)return;
   const r=await sb.from('profiles').select('views').eq('id',me.id).maybeSingle();
-  const n=(r.data&&r.data.views)||0,pm=document.querySelector('.pm');
-  if(!pm||document.getElementById('pviews'))return;
-  const el=[...pm.querySelectorAll('.mu')].find(x=>/idea.*friend/.test(x.textContent));
-  if(el)el.insertAdjacentHTML('afterend',`<div class="mu" id="pviews" style="margin-top:2px">${n} profile view${n===1?'':'s'}</div>`);
+  if(r.error||!r.data)return;
+  const n=r.data.views||0,txt=n+' profile view'+(n===1?'':'s'),pm=document.querySelector('.pm');
+  if(!pm)return;
+  let el=document.getElementById('pviews');
+  if(!el){
+    const ref=[...pm.querySelectorAll('.mu')].find(x=>/idea.*friend/.test(x.textContent));
+    const html=`<div class="mu" id="pviews" style="margin-top:2px"></div>`;
+    if(ref)ref.insertAdjacentHTML('afterend',html);else pm.insertAdjacentHTML('beforeend',html);
+    el=document.getElementById('pviews');
+  }
+  if(el)el.textContent=txt;
 }
+setInterval(()=>{if(document.getElementById('pviews'))refreshViews()},8000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.querySelector('.pm'))refreshViews()});
 })();
