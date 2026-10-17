@@ -1,6 +1,6 @@
-/* IdeaHub Plus: profile upgrade + People page in ONE file.
+/* IdeaHub Plus: profile upgrade + People page + sign-up flow in ONE file.
    Load after app3.js and before patch.js:
-   <script src="ideahub.js?v=3"></script> */
+   <script src="ideahub.js?v=4"></script> */
 /* IdeaHub profile upgrade: richer Me page + full Edit profile screen.
    Loads after app3.js and before patch.js. Overrides vMe() only. */
 (function(){
@@ -383,4 +383,68 @@ async function refreshViews(){
 }
 setInterval(()=>{if(document.getElementById('pviews'))refreshViews()},8000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&document.querySelector('.pm'))refreshViews()});
+})();
+
+/* ===== Sign-up flow: new members fill in their whole profile (6 steps) =====
+   Replaces claimView() from onboard.js. Steps 2, 4 and 5 can be skipped. */
+(function(){
+const ROLES=['Videographer','Photographer','Video editor','Motion designer','3D artist','Illustrator','Designer','Product designer','Brand designer','Engineer','AI engineer','No-code builder','Creator','Streamer','Podcaster','Writer','Founder','Marketer','Growth','Community','Sound designer','Musician','Investor','Student','Other'];
+const TOTAL=6;
+let step=1,pic=null,roles=[];
+const upd=async f=>{const r=await sb.from('profiles').update(f).eq('id',me.id);if(!r.error)prof={...prof,...f};return r};
+const v=i=>(($('#'+i)||{}).value||'').trim();
+const handle=s=>String(s||'').trim().replace(/^https?:\/\/[^/]+\//i,'').replace(/^@/,'').replace(/[^\w.\-]/g,'').slice(0,40);
+const finish=async()=>{await upd({signup_step:TOTAL});started=null;start({user:me})};
+
+window.claimView=function(){step=1;pic=null;roles=Array.isArray(prof.roles)?prof.roles.slice():[];render()};
+
+async function render(){
+  $('#hd').innerHTML=`<span class="logo">&#128161; ${esc(APP)}</span><button class="btn g" style="margin-left:auto" data-act="out">Sign out</button>`;
+  const w=$('#main'),bar=`<div class="prog"><i style="width:${Math.round(step/TOTAL*100)}%"></i></div>`,h=t=>`<h1 class="big" style="font-size:34px">${t}</h1>`;
+  const nav=(next,skip,label)=>`<button class="btn cta" data-o2="${next}">${label||'Continue &rarr;'}</button>${skip?'<button class="btn g cta" data-o2="skip">Skip for now</button>':''}${step>1?'<button class="btn g cta" data-o2="back">Back</button>':''}`;
+  const lbl=t=>`<div class="lbl">${t}</div>`;
+  if(step===1){const n=prof.full_name||'';
+    w.innerHTML=`<div class="ob pedit">${bar}${h('Is this you?')}
+    <div class="row" style="margin:14px 0"><div class="avw" id="pavw" style="width:72px;height:72px"><div class="av" style="width:100%;height:100%;font-size:30px;background:var(--or);overflow:hidden">${prof.avatar_url?`<img src="${esc(prof.avatar_url)}" style="width:100%;height:100%;object-fit:cover" alt="">`:esc((n||me.email||'?')[0].toUpperCase())}</div><label class="avb" title="Add a photo">&#9998;<input type="file" id="pav" accept="image/*" hidden></label></div><div class="sp"><b>${esc(n||'New member')}</b><div class="mu">${esc(me.email||'')}</div></div></div>
+    <input id="obn" placeholder="Your name" maxlength="60" value="${esc(n)}" style="margin-bottom:10px"><input id="obun" placeholder="Pick a unique @username" maxlength="20" autocapitalize="none" value="${esc(prof.username||'')}"><div id="obm" class="mu" style="margin:6px 0 14px">3-20 letters, numbers or _</div>${nav('n1')}</div>`}
+  if(step===2)
+    w.innerHTML=`<div class="ob pedit">${bar}${h('What do you do?')}<p class="mu">Pick everything that fits. You can change it anytime.</p>
+    <div class="rchips">${ROLES.map(r=>`<button type="button" class="chip${roles.includes(r)?' on':''}" data-or="${esc(r)}">${esc(r)}</button>`).join('')}</div>
+    ${lbl('Headline <span>optional</span>')}<input id="obhl" maxlength="80" placeholder="Videographer for brands that move" value="${esc(prof.headline||'')}"><div style="height:18px"></div>${nav('n2',true)}</div>`;
+  if(step===3){const p=await ipinfo();if(step!==3)return;const c=CITIES.find(x=>x[0].toLowerCase()===(p.city||'').toLowerCase());
+    w.innerHTML=`<div class="ob pedit">${bar}${h('Where are you?')}<p class="mu">We guessed from your connection. Change it if it is wrong.</p><input id="obc" placeholder="Country" value="${esc(prof.country||p.country)}" style="margin-bottom:10px"><select id="obt"><option value="">${p.city?'Use '+esc(p.city):'Use my connection'}</option>${CITIES.map(x=>`<option ${(prof.city?prof.city===x[0]:c&&c[0]===x[0])?'selected':''}>${x[0]}</option>`).join('')}</select><div style="height:18px"></div>${nav('n3')}</div>`}
+  if(step===4)
+    w.innerHTML=`<div class="ob pedit">${bar}${h('Tell us about you')}${lbl('About')}<textarea id="obab" maxlength="500" placeholder="A few lines about you">${esc(prof.bio||'')}</textarea>
+    <div class="g3"><div>${lbl('Instagram')}<input id="obig" maxlength="40" autocapitalize="none" placeholder="handle" value="${esc(prof.instagram||'')}"></div><div>${lbl('X')}<input id="obx" maxlength="40" autocapitalize="none" placeholder="handle" value="${esc(prof.x_handle||'')}"></div><div>${lbl('YouTube')}<input id="obyt" maxlength="40" autocapitalize="none" placeholder="handle" value="${esc(prof.youtube||'')}"></div></div>
+    <label class="owr">Open to work<input type="checkbox" id="obow" ${prof.open_to_work?'checked':''}></label><div style="height:18px"></div>${nav('n4',true)}</div>`;
+  if(step===5){
+    w.innerHTML=`<div class="ob pedit">${bar}${h('Show your work')}<p class="mu">Paste links to your portfolio, site or best work. Up to 8.</p><div class="row"><input id="wl" placeholder="Paste a link&hellip;" style="margin:0"><button class="btn g" data-act="addlink">Add</button></div><div id="wlist"></div><div style="height:18px"></div>${nav('n5',true)}</div>`;
+    paintLinks()}
+  if(step===6)
+    w.innerHTML=`<div class="ob pedit">${bar}${h('Post your first idea')}<p class="mu">Share something you are thinking about. You can skip this.</p><input id="obti" maxlength="120" placeholder="Idea title" style="margin-bottom:10px"><textarea id="obtx" maxlength="2000" placeholder="Describe your idea&hellip;"></textarea><input id="obtg" maxlength="24" placeholder="Tag (e.g. tech, art)" style="margin:10px 0"><div class="row" style="margin-bottom:12px"><label class="btn g" style="cursor:pointer">&#128247; Image<input type="file" id="obf2" accept="image/*" hidden></label><span class="mu" id="obfn"></span></div>${nav('n6',true,'Share idea &rarr;')}</div>`;
+  scrollTo(0,0);
+}
+
+document.addEventListener('click',async e=>{
+  const c=e.target.closest('[data-or]');
+  if(c){const r=c.dataset.or;roles=roles.includes(r)?roles.filter(x=>x!==r):[...roles,r];c.classList.toggle('on',roles.includes(r));return}
+  const t=e.target.closest('[data-o2]');if(!t)return;const k=t.dataset.o2;
+  try{
+    if(k==='n1'){const un=v('obun').toLowerCase(),name=v('obn');if(!name)return toast('Enter your name');if(!/^[a-z0-9_]{3,20}$/.test(un))return toast('Username: 3-20 letters, numbers or _');
+      const r=await upd({full_name:name,username:un,signup_step:1});if(r.error)return toast(r.error.code==='23505'?'@'+un+' is already taken':r.error.message);step=2;render()}
+    else if(k==='n2'){const r=await upd({roles,role:roles.join(', ')||null,headline:v('obhl')||null,signup_step:2});if(r.error)return toast(r.error.message);step=3;render()}
+    else if(k==='n3'){const ci=CITIES.find(x=>x[0]===v('obt')),p=await ipinfo(),loc=ci?{city:ci[0],lat:ci[1],lng:ci[2]}:{city:p.city||null,lat:p.lat,lng:p.lng};
+      const r=await upd({country:v('obc')||null,...loc,signup_step:3});if(r.error)return toast(r.error.message);step=4;render()}
+    else if(k==='n4'){const r=await upd({bio:v('obab')||null,instagram:handle(v('obig'))||null,x_handle:handle(v('obx'))||null,youtube:handle(v('obyt'))||null,open_to_work:!!($('#obow')||{}).checked,signup_step:4});if(r.error)return toast(r.error.message);step=5;render()}
+    else if(k==='n5'){await upd({signup_step:5});step=6;render()}
+    else if(k==='n6'){if(!v('obti')||!v('obtx'))return toast('Add a title and description, or tap Skip');
+      const r=await sb.from('posts').insert({title:v('obti'),body:v('obtx'),tag:v('obtg').toLowerCase().replace(/^#/,'')||null,image_url:pic||null});if(r.error)return toast(r.error.message);pic=null;finish()}
+    else if(k==='skip'){if(step>=TOTAL)return finish();step++;render()}
+    else if(k==='back'){step=Math.max(1,step-1);render()}
+  }catch(err){toast(err.message||'Something went wrong')}
+});
+document.addEventListener('change',async e=>{
+  if(e.target.id!=='obf2'||!e.target.files[0])return;
+  const f=e.target.files[0],u=await up(f);if(u){pic=u;const n=$('#obfn');if(n)n.textContent=f.name}
+});
 })();
